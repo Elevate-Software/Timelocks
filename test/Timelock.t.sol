@@ -8,19 +8,34 @@ import { AccessControl } from "../src/AccessControl.sol";
 
 contract TimelockTest is Test {
     Counter public counter;
+    AccessControl public accessControl;
+    TimelockController public timelockController;
 
     function setUp() public {
         counter = new Counter();
-        counter.setNumber(0);
+        accessControl = new accessControl();
+
+        uint256 minDelay = 2 days; // TODO: CONFIG
+
+        address[] memory proposers; // TODO: CONFIG
+        proposers.push(address(this));
+
+        address[] memory executors; // TODO: CONFIG
+        executors.push(address(this));
+
+        address admin = address(this);  // TODO: CONFIG
+
+        timelockController = new timelockController(
+            minDelay,
+            proposers,
+            executors,
+            admin
+        );
     }
 
-    function testIncrement() public {
-        counter.increment();
-        assertEq(counter.number(), 1);
+    function test_timelock_init_state() public {
     }
 
-    function testSetNumber(uint256 x) public {
-        counter.setNumber(x);
-        assertEq(counter.number(), x);
+    function test_timelock() public {
     }
 }
