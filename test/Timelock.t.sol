@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Test.sol";
-import "../src/Counter.sol";
+import { Test } from "../lib/forge-std/src/Test.sol";
+import { Counter } from "../src/Counter.sol";
+import { TimelockController } from "../src/TimelockController.sol";
+import { AccessControl } from "../src/AccessControl.sol";
 
-contract CounterTest is Test {
+contract TimelockTest is Test {
     Counter public counter;
 
     function setUp() public {
