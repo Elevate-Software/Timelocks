@@ -23,21 +23,29 @@ contract TimelockTest is Test {
 
         address admin = address(222); 
 
+        // initialize timelockController with proper params
+        // NOTE: address(222) is playing all roles: admin, executor, proposer
         timelockController = new TimelockController(
             minDelay,
             proposers,
             executors,
             admin
         );
+
+        // give ownership of counter to timelockController
+        counter.transferOwnership(address(timelockController));
     }
 
     // TODO:
     // schedule()       DONE
     // scheduleBatch()  DONE
-    // execute()
+    // execute()        DONE
     // executeBatch()
     // cancel()
     // updateDelay()
+
+    // NOTE: Proposal: PROPOSER & CANCELLER is a dev wallet & MultiSig, ADMIN and EXECUTOR is the MultiSig
+    // TODO: Give this some though
 
     function test_timelock_init_state() public {
         bytes32 TIMELOCK_ADMIN_ROLE = keccak256("TIMELOCK_ADMIN_ROLE");
@@ -49,6 +57,10 @@ contract TimelockTest is Test {
         emit log_bytes32(EXECUTOR_ROLE);
         emit log_bytes32(CANCELLER_ROLE);
 
+        assertEq(timelockController.TIMELOCK_ADMIN_ROLE(), TIMELOCK_ADMIN_ROLE);
+        assertEq(timelockController.PROPOSER_ROLE(), PROPOSER_ROLE);
+        assertEq(timelockController.EXECUTOR_ROLE(), EXECUTOR_ROLE);
+        assertEq(timelockController.CANCELLER_ROLE(), CANCELLER_ROLE);
     }
 
     function test_timelock_schedule() public {
@@ -134,6 +146,82 @@ contract TimelockTest is Test {
 
         // Post-State check.
         assertEq(timelockController.getTimestamp(id), block.timestamp + delay);
+    }
+
+    function test_timelock_execute() public {
+
+        address target = address(counter);
+        uint256 value = 0;
+        bytes4 selector = bytes4(keccak256("setNumber(uint256)"));
+        bytes memory data = abi.encodeWithSelector(selector, 5);
+        bytes32 predecessor = 0;
+        bytes32 salt = bytes32(0);
+        uint256 delay = 2 days;
+
+        // Get hash
+        bytes32 id = timelockController.hashOperation(target, value, data, predecessor, salt);
+
+        // Pre-state check.
+        assertEq(counter.number(), 0);
+
+        // Call Schedule
+        vm.prank(address(222));
+        timelockController.schedule(target, value, data, predecessor, salt, delay);
+
+        // Warp
+        vm.warp(2 days + 1);
+
+        // Call Execute
+        vm.prank(address(222));
+        timelockController.execute(target, value, data, predecessor, salt);
+
+        // Post-State check.
+        assertEq(counter.number(), 5);
+    }
+
+    function test_timelock_executeBatch() public {
+
+        address[] memory targets = new address[](2);
+        targets[0] = address(counter);
+        targets[1] = address(counter);
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory payloads = new bytes[](2);
+        bytes4 selector = bytes4(keccak256("setNumber(uint256)"));
+        bytes memory data = abi.encodeWithSelector(selector, 5);
+        payloads[0] = data;
+        selector = bytes4(keccak256("addNumber(uint256)"));
+        data = abi.encodeWithSelector(selector, 6);
+        payloads[1] = data;
+
+        bytes32 predecessor = 0;
+
+        bytes32 salt = bytes32(0);
+
+        uint256 delay = 2 days;
+
+        // Get hash
+        bytes32 id = timelockController.hashOperationBatch(targets, values, payloads, predecessor, salt);
+
+        // Pre-state check.
+        assertEq(counter.number(), 0);
+
+        // Call Schedule
+        vm.prank(address(222));
+        timelockController.scheduleBatch(targets, values, payloads, predecessor, salt, delay);
+
+        // Warp
+        vm.warp(2 days + 1);
+
+        // Call Execute
+        vm.prank(address(222));
+        timelockController.executeBatch(targets, values, payloads, predecessor, salt);
+
+        // Post-State check.
+        assertEq(counter.number(), 11);
     }
 
     
