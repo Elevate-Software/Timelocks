@@ -12,4 +12,10 @@ contract Counter is Ownable {
         
         number = newNumber;
     }
+
+    function addNumber(uint256 addNumber) external onlyOwner {
+        require(number != 0);
+        
+        number += addNumber;
+    }
 }
